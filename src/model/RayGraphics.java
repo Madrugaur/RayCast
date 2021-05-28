@@ -3,6 +3,7 @@ package model;
 import application.Constants;
 
 import java.awt.*;
+import java.util.Arrays;
 
 /*
 Make it so that drawing the camera is super easy
@@ -19,44 +20,67 @@ public class RayGraphics {
         int cellWidth = Constants.CELL_WIDTH;
         for (int r = 0; r < Floormap.HEIGHT; r++) {
             for (int c = 0; c < Floormap.WIDTH; c++) {
-                if (map.getCell(r, c) == 1) {
-                    int x = c * cellWidth;
-                    int y = r * cellWidth;
-                    g.setColor(Color.WHITE);
-                    g.fillRect(x, y, cellWidth, cellWidth);
-                    g.setColor(Color.GRAY);
-                    g.drawRect(x, y, cellWidth, cellWidth);
-                }
+                int cellVal = map.getCell(r, c);
+                int x = c * cellWidth;
+                int y = r * cellWidth;
+                Color color = switch (cellVal) {
+                    case 1 -> Color.WHITE;
+                    case 2 -> Color.RED;
+                    default -> Color.BLACK;
+                };
+                g.setColor(color);
+                g.fillRect(x, y, cellWidth, cellWidth);
+                g.setColor(Color.GRAY);
+                g.drawRect(x, y, cellWidth, cellWidth);
             }
         }
     }
 
     public void drawCamera(Camera camera, Floormap map) {
         int cellWidth = Constants.CELL_WIDTH;
-        g.setColor(Color.RED);
-        g.fillRect(camera.posX(cellWidth), camera.posY(cellWidth), cellWidth, cellWidth);
         int x1 = camera.posX(cellWidth) + Constants.center(cellWidth);
         int y1 = camera.posY(cellWidth) + Constants.center(cellWidth);
         Point origin = new Point(x1, y1);
         Point endpoint = calculateViewRayEndpoint(camera);
-        g.setColor(Color.RED);
-        drawLine(origin, endpoint);
-        highlightViewedCells(endpoint, origin, map);
+
+        Point gridEndpoint = new Point (Math.floorDiv(endpoint.x - 10, cellWidth), Math.floorDiv(endpoint.y, cellWidth));
+
+        Floormap copy = highlightViewedCells(gridEndpoint, origin, map);
+        drawFloormap(copy);
+        _drawCamera(camera, origin, endpoint);
     }
 
-    private void highlightViewedCells(Point endpoint, Point origin, Floormap floormap) {
-        // y = m(x + x2) + y2
-        double slope = (endpoint.y - origin.y * 1f) / (endpoint.x - origin.x);
+    private void _drawCamera(Camera camera, Point origin, Point endpoint) {
         int size = Constants.CELL_WIDTH;
+        g.setColor(Color.RED);
+        g.fillRect(camera.posX(size), camera.posY(size), size, size);
+        g.setColor(Color.RED);
+        drawLine(origin, endpoint);
+    }
 
-        int oR = origin.y / size;
-        int oC = origin.x / size;
-        int eR = endpoint.y / size;
-        int eC = endpoint.x / size;
 
-        System.out.printf("Origin -> r: %d, c: %d\n", oR, oC);
-        System.out.printf("Endpnt -> r: %d, c: %d\n", eR, eC);
-        System.out.println(slope);
+    private Floormap highlightViewedCells(Point endpoint, Point origin, Floormap floormap) {
+        final Floormap copy = floormap.copy();
+        final double size = Floormap.WIDTH;
+        int[] xarr = new int[] {(int) Math.round(origin.x / size), (int) Math.round(endpoint.x / size)};
+        int[] yarr = new int[] {(int) Math.round(origin.y / size), (int) Math.round(endpoint.y / size)};
+        Arrays.sort(xarr);
+        int dx = xarr[0] - xarr[1];
+        int dy = yarr[0] - yarr[1];
+        int D = 2 * dy - dx;
+        int y = yarr[0];
+
+        for (int x = xarr[0]; x < xarr[1]; x++) {
+            System.out.printf("x: %f, y: %f\n", x / size , y / size);
+            copy.setCell(2, 20 - (int) Math.round(y / size), 20 - (int) Math.round(x / size));
+            if (D > 0) {
+                y = y + 1;
+                D -= 2 * dx;
+            }
+            D += 2 * dy;
+        }
+        System.out.println(copy.toString());
+        return copy;
     }
 
     private Point calculateViewRayEndpoint(double angle, int currX, int currY, int offset) {

@@ -16,6 +16,10 @@ public class Floormap {
         makeFloormap(source);
     }
 
+    private Floormap(int[][] cp) {
+        this.map = cp;
+    }
+
     private void makeFloormap(BufferedImage source) {
         assert source.getWidth() == WIDTH;
         assert source.getHeight() == HEIGHT;
@@ -31,6 +35,10 @@ public class Floormap {
         return map[r][c];
     }
 
+    public void setCell(int i, int r, int c) {
+        this.map[r][c] = i;
+    }
+
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
@@ -39,5 +47,10 @@ public class Floormap {
             builder.append("\n");
         });
         return builder.toString();
+    }
+
+    public Floormap copy() {
+        int[][] cp = Arrays.copyOf(map, map.length);
+        return new Floormap(cp);
     }
 }

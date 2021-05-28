@@ -13,8 +13,6 @@ public class ImageGenerator {
     public Image generateTopDown(Floormap map, Camera camera) {
         Image image = new BufferedImage(ApplicationFrame.WIDTH, ApplicationFrame.HEIGHT, BufferedImage.TYPE_INT_RGB);
         RayGraphics graphics = new RayGraphics(image.getGraphics());
-
-        graphics.drawFloormap(map);
         graphics.drawCamera(camera, map);
 
         return image;
