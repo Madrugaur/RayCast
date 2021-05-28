@@ -11,8 +11,8 @@ import java.awt.event.KeyListener;
 
 public class ApplicationFrame extends JFrame implements KeyListener {
     public static final Dimension SCREEN_DIMENSION = Toolkit.getDefaultToolkit().getScreenSize();
-    public static final int WIDTH = (int) (SCREEN_DIMENSION.getWidth() * .5);
-    public static final int HEIGHT = (int) (SCREEN_DIMENSION.getHeight() * .5);
+    public static final int WIDTH = (int) (SCREEN_DIMENSION.getWidth() * (2 / 3.0));
+    public static final int HEIGHT = (int) (SCREEN_DIMENSION.getHeight() * (2 / 3.0));
 
     private final JPanel contentPanel;
     private final Camera camera;
@@ -25,6 +25,7 @@ public class ApplicationFrame extends JFrame implements KeyListener {
 
     public ApplicationFrame(ImageGenerator imageGenerator, Camera camera, Floormap map) {
         super();
+        final ApplicationFrame selfRef = this;
         this.camera = camera;
         this.imageGenerator = imageGenerator;
         this.map = map;
@@ -34,9 +35,7 @@ public class ApplicationFrame extends JFrame implements KeyListener {
         int y = Constants.center(HEIGHT);
         this.setLocation(x,y);
         this.setDefaultCloseOperation(EXIT_ON_CLOSE);
-        this.setVisible(true);
 
-        this.update();
 
         contentPanel = new JPanel() {
             @Override
@@ -46,11 +45,13 @@ public class ApplicationFrame extends JFrame implements KeyListener {
             }
         };
         contentPanel.setLocation(0, 0);
-        contentPanel.setSize(this.getSize());
         this.add(contentPanel);
         this.addKeyListener(this);
         this.setTitle(String.format("RayCast (%dx%d)", WIDTH, HEIGHT));
+        this.setVisible(true);
+        this.update();
     }
+
 
     public void update() {
         this.source = imageGenerator.generateTopDown(map, camera);
