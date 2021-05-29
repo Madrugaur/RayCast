@@ -50,7 +50,10 @@ public class Floormap {
     }
 
     public Floormap copy() {
-        int[][] cp = Arrays.copyOf(map, map.length);
+        int[][] cp = new int[HEIGHT][WIDTH];
+        for (int r = 0; r < HEIGHT; r++) {
+            System.arraycopy(map[r], 0, cp[r], 0, WIDTH);
+        }
         return new Floormap(cp);
     }
 }

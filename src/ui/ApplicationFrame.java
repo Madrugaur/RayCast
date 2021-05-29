@@ -19,7 +19,7 @@ public class ApplicationFrame extends JFrame implements KeyListener {
     private final ImageGenerator imageGenerator;
     private final Floormap map;
 
-    private final double THETA_STEP = 2.8125;
+    private final double THETA_STEP = 10;
 
     private Image source;
 

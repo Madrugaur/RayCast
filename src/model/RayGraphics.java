@@ -11,7 +11,7 @@ Make it so that drawing the camera is super easy
  */
 public class RayGraphics {
     private final Graphics g;
-
+    private static final double EFFECTIVE_INFINITY = 3.2662478706390739E17;
     public RayGraphics(Graphics g) {
         this.g = g;
     }
@@ -40,17 +40,15 @@ public class RayGraphics {
         int cellWidth = Constants.CELL_WIDTH;
         int x1 = camera.posX(cellWidth) + Constants.center(cellWidth);
         int y1 = camera.posY(cellWidth) + Constants.center(cellWidth);
-        Point origin = new Point(x1, y1);
-        Point endpoint = calculateViewRayEndpoint(camera);
+        DoublePoint origin = new DoublePoint(x1, y1);
+        DoublePoint endpoint = calculateViewRayEndpoint(camera);
 
-        Point gridEndpoint = new Point (Math.floorDiv(endpoint.x - 10, cellWidth), Math.floorDiv(endpoint.y, cellWidth));
-
-        Floormap copy = highlightViewedCells(gridEndpoint, origin, map);
+        Floormap copy = highlightViewedCells(endpoint, origin, map);
         drawFloormap(copy);
         _drawCamera(camera, origin, endpoint);
     }
 
-    private void _drawCamera(Camera camera, Point origin, Point endpoint) {
+    private void _drawCamera(Camera camera, DoublePoint origin, DoublePoint endpoint) {
         int size = Constants.CELL_WIDTH;
         g.setColor(Color.RED);
         g.fillRect(camera.posX(size), camera.posY(size), size, size);
@@ -59,35 +57,46 @@ public class RayGraphics {
     }
 
 
-    private Floormap highlightViewedCells(Point endpoint, Point origin, Floormap floormap) {
+    private Floormap highlightViewedCells(DoublePoint endpoint, DoublePoint origin, Floormap floormap) {
         final Floormap copy = floormap.copy();
         final double size = Floormap.WIDTH;
-        int[] xarr = new int[] {(int) Math.round(origin.x / size), (int) Math.round(endpoint.x / size)};
-        int[] yarr = new int[] {(int) Math.round(origin.y / size), (int) Math.round(endpoint.y / size)};
+        double[] xarr = new double[] {origin.getX(), endpoint.getIntX()};
+        double[] yarr = new double[] {origin.getY(), endpoint.getIntY()};
         Arrays.sort(xarr);
-        int dx = xarr[0] - xarr[1];
-        int dy = yarr[0] - yarr[1];
-        int D = 2 * dy - dx;
-        int y = yarr[0];
-
-        for (int x = xarr[0]; x < xarr[1]; x++) {
-            System.out.printf("x: %f, y: %f\n", x / size , y / size);
-            copy.setCell(2, 20 - (int) Math.round(y / size), 20 - (int) Math.round(x / size));
-            if (D > 0) {
-                y = y + 1;
-                D -= 2 * dx;
+        Arrays.sort(yarr);
+        double dx = xarr[0] - xarr[1];
+        double dy = yarr[0] - yarr[1];
+        if (dx == 0) {
+            int step = 1;
+            if (endpoint.y > origin.y) step = -step;
+            for (int y = (int) (origin.y / size); y >= 0 && y < Floormap.HEIGHT; y -= step) {
+                copy.setCell(2, y, (int) (origin.x / size));
             }
-            D += 2 * dy;
+        } else {
+            double D = 2 * dy - dx;
+            double y = yarr[0];
+
+
+            for (double x = xarr[0]; x < xarr[1]; x++) {
+                int ny = (int) Math.round(y / size);
+                int nx = (int) Math.round(x / size);
+                copy.setCell(2, ny, nx);
+                if (D > 0) {
+                    y = y + 1;
+                    D -= 2 * dx;
+                }
+                D += 2 * dy;
+            }
         }
-        System.out.println(copy.toString());
+
         return copy;
     }
 
-    private Point calculateViewRayEndpoint(double angle, int currX, int currY, int offset) {
+    private DoublePoint calculateViewRayEndpoint(double angle, int currX, int currY, int offset) {
         int size = Constants.CELL_WIDTH;
         int width = Floormap.WIDTH * size;
         int height = Floormap.HEIGHT * size;
-        double run = size;
+        double run = 1;
         double rise = calcRise(angle + offset) * size;
         double x = currX * size + Constants.center(size);
         double y = currY * size + Constants.center(size);
@@ -96,29 +105,43 @@ public class RayGraphics {
             rise = -rise;
             run = -run;
         }
+        double boundedX = 0;
+        double boundedY = 0;
 
-        while(inBound(x, width) && inBound(y, height)) {
-            x += run;
-            y -= rise;
+        if (Math.abs(rise) >= EFFECTIVE_INFINITY) {
+            boundedX = (int) x;
+            if (rise < 0) {
+                boundedY = height;
+            }
+        } else if (Math.abs(rise) == Math.abs(run)) {
+            boundedY = rise > 0 ? 0 : 400;
+            boundedX = run > 0 ? 400 : 0;
+        } else if (rise == 0){
+            boundedX = run > 0 ? 400 : 0;
+            boundedY = (int) y;
+        } else {
+            run /= rise;
+            rise = 1;
+            while(inBound(x, width) && inBound(y, height)) {
+                x += run;
+                y -= rise;
+            }
+            boundedX = bound(x, width);
+            boundedY = bound(y, height);
         }
-        int boundedX = bound((int) (x - run), width);
-        int boundedY = bound((int) y, height);
-        return new Point(boundedX, boundedY);
+
+        return new DoublePoint(boundedX, boundedY);
     }
 
-    private int bound(int val, int bound) {
-        if (val < -bound) return -bound;
-        return Math.min(val, bound);
+    private double bound(double val, int bound) {
+        if (val < 0) return -bound;
+        if (val > bound) return bound;
+        return val;
     }
 
-    private Point calculateViewRayEndpoint(Camera camera) {
+    private DoublePoint calculateViewRayEndpoint(Camera camera) {
         return calculateViewRayEndpoint(camera.getAngle(), camera.getX(), camera.getY(),
                 0);
-    }
-
-    private Point calculateViewRayEndpointOffset(Camera camera, int offset) {
-        return calculateViewRayEndpoint(camera.getAngle(), camera.getX(), camera.getY(),
-                offset);
     }
 
     private boolean inBound(double val, int bound) {
@@ -129,7 +152,30 @@ public class RayGraphics {
         return Math.tan(Math.toRadians(90 - angle));
     }
 
-    public void drawLine(Point p1, Point p2) {
-        g.drawLine(p1.x, p1.y, p2.x, p2.y);
+    public void drawLine(DoublePoint p1, DoublePoint p2) {
+        g.drawLine(p1.getIntX(), p1.getIntY(), p2.getIntX(), p2.getIntY());
+    }
+
+    private static class DoublePoint {
+        private double x, y;
+        public DoublePoint(double x, double y) {
+            this.x = x;
+            this.y = y;
+        }
+
+        public double getX() {
+            return x;
+        }
+
+        public double getY() {
+            return y;
+        }
+
+        public int getIntX() {
+            return (int) x;
+        }
+        public int getIntY() {
+            return (int) y;
+        }
     }
 }
